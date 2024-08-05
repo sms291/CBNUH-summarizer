@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBNUH API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: auto; /* 전체 페이지 스크롤 가능 */
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 800px;  /* 두 개의 container를 위해 넓이 조정 */
+            max-width: 100%;
+            margin: 20px;
+            transform-origin: center center; /* 확대/축소 중심점 설정 */
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap; /* 모바일에서의 반응형을 위해 추가 */
+        }
+        .box {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 45%;
+            padding: 20px;
+            box-sizing: border-box;
+            margin: 10px; /* 모바일에서 박스 간격을 위해 추가 */
+        }
+        .header {
+            background-color: #6200ea;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: none;
+            box-sizing: border-box;
+            overflow: auto; /* 입력 텍스트 영역 스크롤 가능 */
+        }
+        button, input[type="file"] {
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button:hover, input[type="file"]:hover {
+            background-color: #3700b3;
+        }
+        .summary, .statistics {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            height: 100px;
+            overflow: auto; /* 요약된 텍스트 영역 스크롤 가능 */
+        }
+        .illustration {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border-radius: 5px;
+        }
+        .toggle-content {
+            display: none;
+            margin-left: 20px;
+        }
+        .toggle-content li {
+            margin: 5px 0;
+        }
+
+        /* 미디어 쿼리 추가 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .box {
+                width: 90%; /* 모바일 화면에서 박스가 차지하는 비율 */
+            }
+        }
+    </style>
+    <script>
+        function uploadFile() {
+            document.getElementById('uploadForm').submit();
+        }
+
+        function toggleDisplay(element) {
+            const contentId = element.getAttribute('data-content-id');
+            const content = document.getElementById(contentId);
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        }
+
+        function showTooltip(event) {
+            const content = JSON.parse(event.target.getAttribute('data-antibiotics'));
+            const tooltip = document.getElementById('tooltip');
+            tooltip.innerHTML = '<strong>항생제 결과:</strong><br>' + 
+                                Object.entries(content).map(([key, value]) => `항생제: ${key} - 비율: ${value}`).join('<br>');
+            tooltip.style.display = 'block';
+            tooltip.style.left = event.pageX + 10 + 'px'; // Tooltip slightly offset for better visibility
+            tooltip.style.top = event.pageY + 10 + 'px';
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="box">
+            <div class="header">
+                <h1>CBNUH API</h1>
+            </div>
+            <div class="content">
+                <div class="illustration">
+                    <img src="{{ url_for('static', filename='충북대학교병원_시그니처_좌우B_영문.png') }}" alt="Mobile illustration" style="max-width: 100%;">
+                </div>
+                <!-- 파일 업로드 폼 -->
+                <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
+                    <label for="file">Upload File:</label><br>
+                    <input type="file" id="file" name="file" onchange="uploadFile()"><br><br>
+                </form>
+                {% if file_url %}
+                    <h2>Processed File:</h2>
+                    <a href="{{ file_url }}">Download processed file</a>
+                {% endif %}
+                <!-- 샘플 버튼 추가 -->
+                <button onclick="window.location.href='/sample'">Go to Sample</button>
+            </div>
+        </div>
+        <div class="box">
+            <div class="header">
+                <h1>Statistics analysis</h1>
+            </div>
+            <div class="content">
+                {% if statistics %}
+                    <ul>
+                        {% for yearmonth, items in statistics.items() %}
+                            <li style="color: #6200ea; cursor: pointer;" onclick="toggleDisplay(this)" data-content-id="content-{{ yearmonth }}">
+                                {{ yearmonth }}
+                            </li>
+                            <ul id="content-{{ yearmonth }}" class="toggle-content">
+                                {% for item in items %}
+                                    <li style="color: #6200ea; cursor: pointer;" onclick="toggleDisplay(this)" onmouseover="showTooltip(event,{{item['antibiotics']}})" onmouseout="hideTooltip()">
+                                        {{ item['result_type'] }} - 빈도수: {{ item['frequency'] }} 
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div id="tooltip" class="tooltip"></div>
+</body>
+</html>

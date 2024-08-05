@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summarization API2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: auto; /* 전체 페이지 스크롤 가능 */
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 400px;
+            max-width: 100%;
+            margin: 20px;
+            transform-origin: center center; /* 확대/축소 중심점 설정 */
+        }
+        .header {
+            background-color: #6200ea;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: none;
+            box-sizing: border-box;
+            overflow: auto; /* 입력 텍스트 영역 스크롤 가능 */
+        }
+        button {
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        .summary {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            height: 100px;
+            overflow: auto; /* 요약된 텍스트 영역 스크롤 가능 */
+        }
+        .illustration {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="zoom-container">
+        <div class="header">
+            <h1>Summarization API</h1>
+        </div>
+        <div class="content">
+            <div class="illustration">
+                <img src="{{ url_for('static', filename='충북대학교병원_시그니처_좌우B_영문.png') }}" alt="Mobile illustration" style="max-width: 100%;">
+            </div>
+            <form action="/sample" method="POST">
+                <label for="input_text">Input Text:</label><br>
+                <textarea id="input_text" name="input_text"></textarea><br><br>
+                <button type="submit">Summarize</button>
+            </form>
+            {% if summary %}
+                <h2>Summary:</h2>
+                <div class="summary" id="output_text">{{ summary }}</div>
+                <button onclick="downloadSummary()">Download Summary</button>
+            {% endif %}
+            <button onclick="window.location.href='/'">Home</button>
+        </div>
+    </div>
+    
+    <script>
+        let zoomLevel = 1;
+
+        function setZoom(level) {
+            document.getElementById('zoom-container').style.transform = `scale(${level})`;
+        }
+
+        function handleWheel(event) {
+            if (event.deltaY < 0) {
+                zoomLevel += 0.1;
+            } else {
+                zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+            }
+            setZoom(zoomLevel);
+            event.preventDefault();
+        }
+
+        function handleTouchStart(event) {
+            if (event.touches.length === 2) {
+                initialPinchDistance = getPinchDistance(event.touches);
+                initialZoomLevel = zoomLevel;
+            }
+        }
+
+        function handleTouchMove(event) {
+            if (event.touches.length === 2) {
+                const pinchDistance = getPinchDistance(event.touches);
+                zoomLevel = initialZoomLevel * (pinchDistance / initialPinchDistance);
+                setZoom(zoomLevel);
+                event.preventDefault();
+            }
+        }
+
+        function getPinchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        document.addEventListener('wheel', handleWheel);
+        document.addEventListener('touchstart', handleTouchStart);
+        document.addEventListener('touchmove', handleTouchMove);
+
+        function downloadSummary() {
+            const text = document.getElementById('output_text').innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const anchor = document.createElement('a');
+            anchor.download = 'summary.txt';
+            anchor.href = window.URL.createObjectURL(blob);
+            anchor.target = '_blank';
+            anchor.style.display = 'none';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+        }
+    </script>
+</body>
+</html>
