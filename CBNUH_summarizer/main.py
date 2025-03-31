@@ -5,10 +5,12 @@ from preprocess_df import ExcelProcessor  # preprocess_df.py에 정의된 클래
 from transformers import pipeline
 from collections import defaultdict
 import base64
-import copy
+import copy, os
+from pyngrok import conf, ngrok
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # 세션을 사용하기 위한 비밀 키 설정
+
 
 # 요약 모델 로드
 summarizer = pipeline("summarization", model='seop/CBNUH-summarizer')
@@ -113,4 +115,13 @@ def process_statistics(df):
     return result
 
 if __name__ == '__main__':
+
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        http_tunnel = ngrok.connect(5555)
+        print("Public URL:", http_tunnel.public_url)
+
+        tunnels = ngrok.get_tunnels()
+        for kk in tunnels:
+            print(kk)
+
     app.run(host='0.0.0.0', port=5555, debug=True)

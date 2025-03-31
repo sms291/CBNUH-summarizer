@@ -118,7 +118,41 @@
     </style>
     <script>
         function uploadFile() {
-            document.getElementById('uploadForm').submit();
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                const rowCount = jsonData.length || 1; // 최소 1줄
+                const progressContainer = document.getElementById('progress-bar-container');
+                const progressBar = document.getElementById('progress-bar');
+
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+
+                let current = 0;
+                const interval = setInterval(() => {
+                    current++;
+                    const percent = Math.min(100, Math.floor((current / rowCount) * 100));
+                    progressBar.style.width = percent + "%";
+
+                    if (current >= rowCount) {
+                        clearInterval(interval);
+                        document.getElementById('uploadForm').submit();
+                    }
+                }, 1000); // 속도 조절 (row당 20ms)
+            };
+
+            reader.readAsArrayBuffer(file);
         }
 
         function toggleDisplay(element) {
@@ -157,9 +191,15 @@
                 <div class="illustration">
                     <img src="{{ url_for('static', filename='충북대학교병원_시그니처_좌우B_영문.png') }}" alt="Mobile illustration" style="max-width: 100%;">
                 </div>
+                <div id="progress-bar-container" style="display: none; margin-bottom: 10px;">
+                    <div style="height: 10px; background-color: #eee; border-radius: 5px; overflow: hidden;">
+                        <div id="progress-bar" style="width: 0%; height: 10px; background-color: #44e65f; transition: width 0.1s;"></div>
+                    </div>
+                    <p style="text-align: center; font-size: 12px; color: #666;">데이터를 처리 중입니다...</p>
+                </div>
                 <!-- 파일 업로드 폼 -->
                 <form id="uploadForm" action="/" method="POST" enctype="multipart/form-data">
-                    <label for="file">Upload File:</label><br>
+                    <!-- <label for="file">Upload File:</label><br> -->
                     <input type="file" id="file" name="file" onchange="uploadFile()"><br><br>
                 </form>
                 {% if file_url %}
@@ -167,6 +207,12 @@
                     <a href="{{ file_url }}">Download processed file</a>
                 {% endif %}
                 <!-- 샘플 버튼 추가 -->
+                {% if processed_file %}
+                <form action="/download" method="POST">
+                    <input type="hidden" name="processed_file" value="{{ processed_file }}">
+                    <button type="submit">Download Summary</button>
+                </form>
+            {% endif %}
                 <button onclick="window.location.href='/sample'">Go to Sample</button>
             </div>
         </div>
@@ -183,10 +229,14 @@
                             </li>
                             <ul id="content-{{ yearmonth }}" class="toggle-content">
                                 {% for item in items %}
-                                    <li style="color: #6200ea; cursor: pointer;" onclick="toggleDisplay(this)" onmouseover="showTooltip(event,{{item['antibiotics']}})" onmouseout="hideTooltip()">
-                                        {{ item['result_type'] }} - 빈도수: {{ item['frequency'] }} 
-                                    </li>
-                                {% endfor %}
+                                <li style="color: #6200ea; cursor: pointer;"
+                                    onmouseover="showTooltip(event)"
+                                    onmouseout="hideTooltip()"
+                                    data-antibiotics='{{ item["antibiotics"] | tojson | safe }}'>
+                                    {{ item['result_type'] }} - 빈도수: {{ item['frequency'] }}
+                                </li>
+                            {% endfor %}
+                            
                             </ul>
                         {% endfor %}
                     </ul>
@@ -196,4 +246,5 @@
     </div>
     <div id="tooltip" class="tooltip"></div>
 </body>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </html>
